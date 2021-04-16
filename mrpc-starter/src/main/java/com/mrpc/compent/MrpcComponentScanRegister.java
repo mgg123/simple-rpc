@@ -1,7 +1,10 @@
 package com.mrpc.compent;
 
 import com.mrpc.config.annotation.EnableMrpc;
+import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
+import org.springframework.beans.factory.support.BeanDefinitionReaderUtils;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
 import org.springframework.core.annotation.AnnotationAttributes;
@@ -29,7 +32,10 @@ public class MrpcComponentScanRegister implements ImportBeanDefinitionRegistrar 
 
     //注册MrpcService
     private void registerMrpcServiceAnnotationBeanPostProcessor(Set<String> packagesToScan, BeanDefinitionRegistry beanDefinitionRegistry) {
-        BeanDefinitionBuilder beanDefintionBuilder = BeanDefinitionBuilder.rootBeanDefinition()
+        BeanDefinitionBuilder builder = BeanDefinitionBuilder.rootBeanDefinition(MrpcServiceClassPostProcessor.class);
+        builder.addConstructorArgValue(packagesToScan);
+        AbstractBeanDefinition beanDefinition = builder.getBeanDefinition();
+        BeanDefinitionReaderUtils.registerWithGeneratedName(beanDefinition, beanDefinitionRegistry);
     }
 
     //扫描注解上的路径

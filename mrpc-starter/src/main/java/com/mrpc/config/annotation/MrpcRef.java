@@ -9,7 +9,7 @@ import java.lang.annotation.*;
 public @interface MrpcRef {
 
     /**
-     * 调用url
+     * 直连url
      */
     String url();
 
