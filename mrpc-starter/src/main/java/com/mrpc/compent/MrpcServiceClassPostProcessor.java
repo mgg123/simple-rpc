@@ -1,5 +1,6 @@
 package com.mrpc.compent;
 
+import com.mrpc.config.annotation.MrpcService;
 import com.mrpc.util.MrpcAnnotationUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +25,7 @@ import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.env.Environment;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
+import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
@@ -43,11 +45,7 @@ public class MrpcServiceClassPostProcessor implements
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
-    private final static List<Class<? extends Annotation>> serviceAnnotationTypes = new ArrayList(){
-        {
-            add("MrpcService");
-        }
-    };
+    private final static List<Class<? extends Annotation>> serviceAnnotationTypes = Arrays.asList(MrpcService.class);
 
     protected final Set<String> packagesToScan;
 
@@ -91,7 +89,7 @@ public class MrpcServiceClassPostProcessor implements
 
     //为每一个带有@Mrpc的类 注册serviceBean
     private void registerServiceBeans(Set<String> resolvedPackagesToScan, BeanDefinitionRegistry beanDefinitionRegistry) {
-        ClassPathBeanDefinitionScanner scanner = new ClassPathBeanDefinitionScanner(beanDefinitionRegistry,
+        MrpcClassPathBeanDefinitionScanner scanner = new MrpcClassPathBeanDefinitionScanner(beanDefinitionRegistry,
                 false,environment,resourceLoader);
 
         //设置beanNaneGenerator
@@ -126,48 +124,62 @@ public class MrpcServiceClassPostProcessor implements
 
     }
 
-    private void registerServiceBean(BeanDefinitionHolder beanDefinitionHolder, BeanDefinitionRegistry beanDefinitionRegistry, ClassPathBeanDefinitionScanner scanner) {
+    private void registerServiceBean(BeanDefinitionHolder beanDefinitionHolder, BeanDefinitionRegistry beanDefinitionRegistry, MrpcClassPathBeanDefinitionScanner scanner) {
         Class<?> beanClass = resolveClass(beanDefinitionHolder);
+        //获取@mrpcservice的beanclass
         Annotation service = findServiceAnnotation(beanClass);
 
-        //获取属性
+        //获取注解属性
         AnnotationAttributes attributes = getAnnotationAttributes(service,false,false);
 
+        //获取beanclass对应的interface
         Class<?> interfaceClass = resolveServiceInterfaceClass(attributes, beanClass);
-
+        //获取beanName
         String annotatedServiceBeanName = beanDefinitionHolder.getBeanName();
 
+        //构建beandefinition
         AbstractBeanDefinition serviceBeanDefinition =
-                buildServiceBeanDefinition(service, serviceAnnotationAttributes, interfaceClass, annotatedServiceBeanName);
+                buildServiceBeanDefinition(service, attributes, interfaceClass, annotatedServiceBeanName);
 
         // ServiceBean Bean name
-        String beanName = generateServiceBeanName(serviceAnnotationAttributes, interfaceClass);
+        String beanName = generateServiceBeanName(attributes, interfaceClass);
 
         if (scanner.checkCandidate(beanName, serviceBeanDefinition)) { // check duplicated candidate bean
-            registry.registerBeanDefinition(beanName, serviceBeanDefinition);
-
+            beanDefinitionRegistry.registerBeanDefinition(beanName, serviceBeanDefinition);
             if (logger.isInfoEnabled()) {
                 logger.info("The BeanDefinition[" + serviceBeanDefinition +
-                        "] of ServiceBean has been registered with name : " + beanName);
+                        "] of MrpcBean has been registered with name : " + beanName);
             }
 
         } else {
 
             if (logger.isWarnEnabled()) {
                 logger.warn("The Duplicated BeanDefinition[" + serviceBeanDefinition +
-                        "] of ServiceBean[ bean name : " + beanName +
-                        "] was be found , Did @DubboComponentScan scan to same package in many times?");
+                        "] of MrpcBean[ bean name : " + beanName +
+                        "] was be found , Did @EnableMrpc scan to same package in many times?");
             }
 
         }
     
     }
 
+    private String generateServiceBeanName(AnnotationAttributes attributes, Class<?> interfaceClass) {
+        return null;
+    }
+
+    private AbstractBeanDefinition buildServiceBeanDefinition(Annotation service, AnnotationAttributes attributes, Class<?> interfaceClass, String annotatedServiceBeanName) {
+
+        return null;
+    }
+
     private Class<?> resolveServiceInterfaceClass(AnnotationAttributes attributes, Class<?> beanClass) {
-
-        //Class intefaceClass = AnnotationUtils.get(attributes,"interfaceClass");
-
-
+        Class<?>[] interfacesClass = ClassUtils.getAllInterfacesForClass(beanClass);
+        Class<?> interfaces = null;
+        if(interfacesClass.length >= 1) {
+            interfaces = interfacesClass[0];
+        }
+        Assert.notNull(interfaces,"@MrpcService  interface class must be present!");
+        return interfaces;
     }
 
     private Annotation findServiceAnnotation(Class<?> beanClass) {
@@ -185,7 +197,7 @@ public class MrpcServiceClassPostProcessor implements
         return ClassUtils.resolveClassName(beanClassName,classLoader);
     }
 
-    private Set<BeanDefinitionHolder> findServiceBeanDefinitionHolders(ClassPathBeanDefinitionScanner scanner, String scan, BeanDefinitionRegistry beanDefinitionRegistry, BeanNameGenerator beanNameGenerator) {
+    private Set<BeanDefinitionHolder> findServiceBeanDefinitionHolders(MrpcClassPathBeanDefinitionScanner scanner, String scan, BeanDefinitionRegistry beanDefinitionRegistry, BeanNameGenerator beanNameGenerator) {
         //查询所有候选者
         Set<BeanDefinition> beanDefinitions = scanner.findCandidateComponents(scan);
         //BeanDefinitionHolder持有
